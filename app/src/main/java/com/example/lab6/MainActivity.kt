@@ -1,7 +1,11 @@
 package com.example.lab6
 
+import android.net.http.SslError
 import android.os.Bundle
 import android.util.Log
+import android.webkit.SslErrorHandler
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -19,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import com.example.lab6.ui.theme.LAB6Theme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -36,6 +41,7 @@ import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
 
 class MainActivity : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -46,7 +52,7 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     App({
-                        sendPostRequest()
+                        sendGetRequest()
                     })
 
                 }
@@ -60,10 +66,12 @@ class MainActivity : ComponentActivity() {
                 certs: Array<X509Certificate?>?, authType: String?
             ) {
             }
+
             override fun checkServerTrusted(
                 certs: Array<X509Certificate?>?, authType: String?
             ) {
             }
+
             override fun getAcceptedIssuers():
                     Array<X509Certificate> {
                 return emptyArray()
@@ -71,13 +79,14 @@ class MainActivity : ComponentActivity() {
         }
     )
 
-    private fun sendPostRequest() {
+    private fun sendGetRequest() {
         GlobalScope.launch {
+            // uncomment this to use TrustManager
 //            val sc = SSLContext.getInstance("SSL")
 //            sc.init(null, trustAllCerts, SecureRandom())
 //            HttpsURLConnection.setDefaultSSLSocketFactory(sc.socketFactory)
 
-            val url = URL("https://jsonplaceholder.typicode.com/posts")
+            val url = URL("http://jsonplaceholder.typicode.com/posts")
             val con: HttpURLConnection = url.openConnection() as HttpURLConnection
             con.requestMethod = "GET"
 
@@ -120,5 +129,27 @@ fun App(sendPostRequest: () -> Unit, modifier: Modifier = Modifier) {
         ) {
             Text(stringResource(R.string.post_request))
         }
+        AndroidView(
+            modifier = Modifier.fillMaxSize(),
+            factory = { ctx ->
+                WebView(ctx).apply {
+                    // Konfiguracja klienta WebViewClient do ignorowania błędów SSL
+                    webViewClient = object : WebViewClient() {
+                        override fun onReceivedSslError(
+                            view: WebView?,
+                            handler: SslErrorHandler,
+                            error: SslError?
+                        ) {
+                            handler.proceed()
+                            // Ignorowanie błędów certyfikatu SSL
+                        }
+                    }
+                }
+            },
+            update = { webView ->
+                // Ładowanie strony Google w WebView
+                webView.loadUrl("https://www.google.com")
+            }
+        )
     }
 }
