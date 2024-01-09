@@ -1,12 +1,16 @@
 package com.example.lab6
 
+import android.content.Context
 import android.net.http.SslError
 import android.os.Bundle
+import android.util.Base64
 import android.util.Log
+import android.webkit.JavascriptInterface
 import android.webkit.SslErrorHandler
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
@@ -40,24 +44,60 @@ import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
 
+/** Instantiate the interface and set the context.  */
+class WebAppInterface(private val mContext: Context) {
+    /** Show a toast from the web page.  */
+    @JavascriptInterface
+    fun showToast(toast: String) {
+        Toast.makeText(mContext, toast, Toast.LENGTH_SHORT).show()
+    }
+}
+
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent {
-            LAB6Theme {
-                // A surface container using the 'background' color from the theme
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    App({
-                        sendGetRequest()
-                    })
 
-                }
-            }
-        }
+        // Uncomment to use interface written in JavaScript
+        // create WebView
+        val myWebView = WebView(applicationContext)
+        // enable JS
+        myWebView.settings.javaScriptEnabled = true
+        // Inject Java class to the WebView
+        myWebView.addJavascriptInterface(WebAppInterface(this), "Android")
+        // Create html page
+        val unencodedHtml = """
+            <html>
+                <body>
+                    <input type="button" value="Click me!" onClick="showAndroidToast('Hacked!')" />
+                    <script type="text/javascript">
+                        function showAndroidToast(toast) {
+                            Android.showToast(toast);
+                        }
+                    </script>
+                </body>
+            </html>
+        """
+        val encodedHtml = Base64.encodeToString(unencodedHtml.toByteArray(), Base64.NO_PADDING)
+        myWebView.loadData(encodedHtml, "text/html", "base64")
+        setContentView(myWebView)
+
+
+        // Uncomment to use interface written in Kotlin
+//        setContent {
+//            LAB6Theme {
+//                // A surface container using the 'background' color from the theme
+//                Surface(
+//                    modifier = Modifier.fillMaxSize(),
+//                    color = MaterialTheme.colorScheme.background
+//                ) {
+//                    App({
+//                        sendGetRequest()
+//                    })
+//
+//                }
+//            }
+//        }
     }
 
     private var trustAllCerts: Array<TrustManager> = arrayOf<TrustManager>(
